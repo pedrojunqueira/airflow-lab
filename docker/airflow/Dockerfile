@@ -62,6 +62,7 @@ RUN set -ex \
     && pip install flask-bcrypt \
     && pip install pyOpenSSL \
     && pip install ndg-httpsclient \
+    && pip install slackclient \
     && pip install pyasn1 \
     && pip install apache-airflow[celery,postgres,ssh${AIRFLOW_DEPS:+,}${AIRFLOW_DEPS}]==${AIRFLOW_VERSION} --constraint /requirements-python3.6.txt \
     && pip install 'redis==3.2' \

@@ -4,8 +4,6 @@ from airflow.contrib.sensors.file_sensor import FileSensor
 from airflow.sensors.http_sensor import HttpSensor
 from airflow.operators.bash_operator import BashOperator
 from airflow.operators.python_operator import PythonOperator
-from airflow.operators.email_operator import EmailOperator
-#from airflow.operators.slack_operator import SlackAPIPostOperator
 
 import requests
 import json
@@ -14,6 +12,8 @@ import os
 from collections import defaultdict
 
 import pandas as pd
+from slack import WebClient
+from slack.errors import SlackApiError
 
 default_args = {
             "owner": "Airflow",
@@ -41,7 +41,6 @@ def download_rates():
     base = data.get('base')
 
     for rate, value in data.get('rates').items():
-        print(date, base, rate, value)
         df_data['date'].append(date)    
         df_data['base'].append(base)    
         df_data['rate'].append(rate)    
@@ -56,6 +55,19 @@ def download_rates():
     output_file = os.path.join(save_folder,f'{date}_fx_rates_base_{base}.csv')
 
     df.to_csv(output_file, index=False)
+
+def send_slack_message():
+    client = WebClient(token=os.environ.get('SLACK_API_TOKEN'))
+
+    try:
+        response = client.chat_postMessage(
+            channel='#monitorairflow',
+            text=f"Dag Successfully Processed! on {datetime.now()}")
+    except SlackApiError as e:
+        # You will get a SlackApiError if "ok" is False
+        assert e.response["ok"] is False
+        assert e.response["error"]  # str like 'invalid_auth', 'channel_not_found'
+        print(f"Got an error: {e.response['error']}")
 
    
 
@@ -79,17 +91,10 @@ with DAG(dag_id="forex_data_pipeline", schedule_interval="@daily", default_args=
             python_callable=download_rates
     )
 
-    # Sending a notification by email
-    # https://stackoverflow.com/questions/51829200/how-to-set-up-airflow-send-email
+    sending_slack_notification = PythonOperator(
+        task_id="sending_slack",
+        python_callable=send_slack_message
+ 
+    )
 
-
-    # sending_email_notification = EmailOperator(
-    #         task_id="sending_email",
-    #         to="airflow_course@yopmail.com",
-    #         subject="forex_data_pipeline",
-    #         html_content="""
-    #             <h3>forex_data_pipeline succeeded</h3>
-    #         """
-    #         )
-
-    is_forex_rates_available >> downloading_rates 
+    is_forex_rates_available >> downloading_rates >> sending_slack_notification

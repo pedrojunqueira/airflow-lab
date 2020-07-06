@@ -1,3 +1,6 @@
+#secrets
+secrets
+
 # dags
 finance_dag.py
 marketing_dag.py

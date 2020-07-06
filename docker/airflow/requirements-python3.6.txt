@@ -353,3 +353,4 @@ yandexcloud==0.30.0
 zdesk==2.7.1
 zict==2.0.0
 zipp==3.1.0
+slackclient==2.7.2
